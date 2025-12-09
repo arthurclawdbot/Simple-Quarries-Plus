@@ -1,5 +1,6 @@
 package com.simplequarries.block.entity;
 
+import com.simplequarries.QuarryUpgrades;
 import com.simplequarries.SimpleQuarries;
 import com.simplequarries.screen.QuarryScreenHandler;
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory;
@@ -10,6 +11,9 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.Inventories;
 import net.minecraft.inventory.Inventory;
+import net.minecraft.inventory.SidedInventory;
+import net.minecraft.enchantment.Enchantment;
+import net.minecraft.component.type.ItemEnchantmentsComponent;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -19,9 +23,12 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.storage.ReadView;
 import net.minecraft.storage.WriteView;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.text.Text;
 import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
@@ -37,24 +44,27 @@ import java.util.Set;
  * Inventory layout:
  * - Slot 0: Pickaxe slot
  * - Slot 1: Fuel slot
- * - Slots 2-37: Output slots (36 slots = 4 rows x 9 cols)
+ * - Slots 2-25: Output slots (24 slots = 4 rows x 6 cols)
  */
-public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHandlerFactory<QuarryScreenHandler.QuarryScreenData>, Inventory {
+public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHandlerFactory<QuarryScreenHandler.QuarryScreenData>, Inventory, SidedInventory {
     
     // Inventory slot indices
     public static final int PICKAXE_SLOT = 0;
     public static final int FUEL_SLOT = 1;
     public static final int OUTPUT_START = 2;
-    public static final int OUTPUT_SLOTS = 36;
-    public static final int INVENTORY_SIZE = OUTPUT_START + OUTPUT_SLOTS; // 38 total slots
+    public static final int OUTPUT_SLOTS = 24;  // 4 rows x 6 cols
+    public static final int INVENTORY_SIZE = OUTPUT_START + OUTPUT_SLOTS; // 26 total slots
 
-    // Mining pattern: 5x5 area centered on the quarry
-    private static final BlockPos[] MINING_OFFSETS = createMiningOffsets();
+    // Sided inventory slot access arrays
+    private static final int[] TOP_SLOTS = { FUEL_SLOT };           // Insert fuel from top
+    private static final int[] BOTTOM_SLOTS = createBottomSlots();  // Extract outputs from bottom
+    private static final int[] SIDE_SLOTS = { PICKAXE_SLOT };       // Insert pickaxe from sides
 
     // Valid pickaxes that can be used
     private static final Set<Item> VALID_PICKAXES = Set.of(
             Items.WOODEN_PICKAXE,
             Items.STONE_PICKAXE,
+            Items.COPPER_PICKAXE,
             Items.IRON_PICKAXE,
             Items.GOLDEN_PICKAXE,
             Items.DIAMOND_PICKAXE,
@@ -131,6 +141,7 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
     private int ticksPerBlock = 0;      // Ticks needed to mine one block (based on pickaxe)
     private int currentDepth = 1;       // Current mining depth below quarry
     private int areaIndex = 0;          // Current position in MINING_OFFSETS array
+    private int upgradeCount = 0;       // Upgrades applied to this quarry
 
     public QuarryBlockEntity(BlockPos pos, BlockState state) {
         super(SimpleQuarries.QUARRY_BLOCK_ENTITY, pos, state);
@@ -288,16 +299,23 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
      */
     private void damagePickaxe(ItemStack pickaxe) {
         if (world instanceof ServerWorld serverWorld && pickaxe.isDamageable()) {
-            // Damage the pickaxe
-            int currentDamage = pickaxe.getDamage();
-            int maxDamage = pickaxe.getMaxDamage();
-            
-            if (currentDamage + 1 >= maxDamage) {
-                // Pickaxe breaks
-                setStack(PICKAXE_SLOT, ItemStack.EMPTY);
-            } else {
-                pickaxe.setDamage(currentDamage + 1);
-                setStack(PICKAXE_SLOT, pickaxe);
+            // Unbreaking: Each level gives a chance to not consume durability (vanilla: 100/(level+1)%)
+            int unbreaking = getEnchantmentLevel(net.minecraft.enchantment.Enchantments.UNBREAKING, pickaxe);
+            boolean damage = true;
+            if (unbreaking > 0) {
+                if (serverWorld.getRandom().nextInt(unbreaking + 1) != 0) {
+                    damage = false;
+                }
+            }
+            if (damage) {
+                int currentDamage = pickaxe.getDamage();
+                int maxDamage = pickaxe.getMaxDamage();
+                if (currentDamage + 1 >= maxDamage) {
+                    setStack(PICKAXE_SLOT, ItemStack.EMPTY);
+                } else {
+                    pickaxe.setDamage(currentDamage + 1);
+                    setStack(PICKAXE_SLOT, pickaxe);
+                }
             }
         }
     }
@@ -308,10 +326,10 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
     @Nullable
     private BlockPos findNextTarget(ServerWorld world) {
         int attempts = 0;
-        int maxAttempts = 512; // Prevent infinite loops
+        int maxAttempts = Math.max(512, getTotalAreaSlots() * 2); // Prevent infinite loops
 
         while (pos.getY() - currentDepth >= world.getBottomY() && attempts < maxAttempts) {
-            BlockPos offset = MINING_OFFSETS[areaIndex];
+            BlockPos offset = getOffsetForIndex(areaIndex);
             BlockPos target = pos.add(offset.getX(), -currentDepth, offset.getZ());
             advancePointer();
             attempts++;
@@ -344,7 +362,7 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
      */
     private void advancePointer() {
         areaIndex++;
-        if (areaIndex >= MINING_OFFSETS.length) {
+        if (areaIndex >= getTotalAreaSlots()) {
             areaIndex = 0;
             currentDepth++;
         }
@@ -396,6 +414,34 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
         return VALID_PICKAXES.contains(stack.getItem());
     }
 
+    public int getUpgradeCount() {
+        return upgradeCount;
+    }
+
+    public void setUpgradeCount(int count) {
+        upgradeCount = QuarryUpgrades.clampUpgradeCount(count);
+        clampAreaIndex();
+        markDirty();
+    }
+
+    private void clampAreaIndex() {
+        int maxIndex = Math.max(0, getTotalAreaSlots() - 1);
+        areaIndex = MathHelper.clamp(areaIndex, 0, maxIndex);
+    }
+
+    /**
+     * Get the level of an enchantment on an item stack, handling registry lookups
+     */
+    private int getEnchantmentLevel(RegistryKey<Enchantment> enchantmentKey, ItemStack stack) {
+        ItemEnchantmentsComponent enchantments = net.minecraft.enchantment.EnchantmentHelper.getEnchantments(stack);
+        for (RegistryEntry<Enchantment> entry : enchantments.getEnchantments()) {
+            if (entry.matchesKey(enchantmentKey)) {
+                return enchantments.getLevel(entry);
+            }
+        }
+        return 0;
+    }
+
     /**
      * Get the mining speed (ticks per block) for a pickaxe
      */
@@ -405,23 +451,23 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
         }
 
         Item item = pickaxe.getItem();
-        
-        // Mining speeds as specified:
-        // Wooden: 10 seconds = 200 ticks
-        // Stone: 8 seconds = 160 ticks
-        // Iron: 6 seconds = 120 ticks
-        // Gold: 1 second = 20 ticks
-        // Diamond: 4 seconds = 80 ticks
-        // Netherite: 2 seconds = 40 ticks
-        
-        if (item == Items.WOODEN_PICKAXE) return 200;
-        if (item == Items.STONE_PICKAXE) return 160;
-        if (item == Items.IRON_PICKAXE) return 120;
-        if (item == Items.GOLDEN_PICKAXE) return 20;
-        if (item == Items.DIAMOND_PICKAXE) return 80;
-        if (item == Items.NETHERITE_PICKAXE) return 40;
-        
-        return 0;
+        int baseTicks = 0;
+        if (item == Items.WOODEN_PICKAXE) baseTicks = 200;
+        else if (item == Items.STONE_PICKAXE) baseTicks = 160;
+        else if (item == Items.COPPER_PICKAXE) baseTicks = 140;
+        else if (item == Items.IRON_PICKAXE) baseTicks = 120;
+        else if (item == Items.GOLDEN_PICKAXE) baseTicks = 20;
+        else if (item == Items.DIAMOND_PICKAXE) baseTicks = 80;
+        else if (item == Items.NETHERITE_PICKAXE) baseTicks = 40;
+        else return 0;
+
+        // Apply Efficiency: Each level increases speed by 25% (vanilla formula)
+        int efficiency = getEnchantmentLevel(net.minecraft.enchantment.Enchantments.EFFICIENCY, pickaxe);
+        if (efficiency > 0) {
+            double speedMultiplier = 1.0 + 0.25 * (efficiency * efficiency + 1);
+            baseTicks = (int)Math.round(baseTicks / speedMultiplier);
+        }
+        return Math.max(1, baseTicks);
     }
 
     /**
@@ -452,6 +498,7 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
         data.putInt("TicksPerBlock", ticksPerBlock);
         data.putInt("Depth", currentDepth);
         data.putInt("AreaIndex", areaIndex);
+        data.putInt("UpgradeCount", upgradeCount);
     }
 
     @Override
@@ -474,7 +521,8 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
         miningProgress = data.getInt("MiningProgress", 0);
         ticksPerBlock = data.getInt("TicksPerBlock", 0);
         currentDepth = Math.max(1, data.getInt("Depth", 1));
-        areaIndex = MathHelper.clamp(data.getInt("AreaIndex", 0), 0, MINING_OFFSETS.length - 1);
+        upgradeCount = QuarryUpgrades.clampUpgradeCount(data.getInt("UpgradeCount", 0));
+        clampAreaIndex();
     }
 
     // ==================== Inventory Implementation ====================
@@ -560,16 +608,73 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
     // ==================== Helper Methods ====================
 
     /**
-     * Create the 5x5 mining pattern offsets
+     * Get the current mining area size (N x N) based on upgrades
      */
-    private static BlockPos[] createMiningOffsets() {
-        BlockPos[] offsets = new BlockPos[25];
-        int index = 0;
-        for (int x = -2; x <= 2; x++) {
-            for (int z = -2; z <= 2; z++) {
-                offsets[index++] = new BlockPos(x, 0, z);
-            }
+    private int getMiningAreaSize() {
+        return QuarryUpgrades.areaForCount(upgradeCount);
+    }
+
+    private int getTotalAreaSlots() {
+        int size = getMiningAreaSize();
+        return size * size;
+    }
+
+    private BlockPos getOffsetForIndex(int index) {
+        int size = getMiningAreaSize();
+        int radius = size / 2;
+        int xIndex = index % size;
+        int zIndex = index / size;
+        return new BlockPos(xIndex - radius, 0, zIndex - radius);
+    }
+
+    /**
+     * Create the array of output slot indices for bottom extraction
+     * Also includes fuel slot for extracting empty buckets
+     */
+    private static int[] createBottomSlots() {
+        int[] slots = new int[OUTPUT_SLOTS + 1];  // +1 for fuel slot
+        slots[0] = FUEL_SLOT;  // Include fuel slot for bucket extraction
+        for (int i = 0; i < OUTPUT_SLOTS; i++) {
+            slots[i + 1] = OUTPUT_START + i;
         }
-        return offsets;
+        return slots;
+    }
+
+    // ==================== SidedInventory Implementation ====================
+
+    @Override
+    public int[] getAvailableSlots(Direction side) {
+        if (side == Direction.DOWN) {
+            return BOTTOM_SLOTS;  // Extract mined items from bottom
+        } else if (side == Direction.UP) {
+            return TOP_SLOTS;     // Insert fuel from top
+        } else {
+            return SIDE_SLOTS;    // Insert pickaxe from sides
+        }
+    }
+
+    @Override
+    public boolean canInsert(int slot, ItemStack stack, @Nullable Direction dir) {
+        if (slot == PICKAXE_SLOT) {
+            return isValidPickaxe(stack);
+        }
+        if (slot == FUEL_SLOT) {
+            return getFuelValue(stack) > 0;
+        }
+        // Don't allow inserting into output slots
+        return false;
+    }
+
+    @Override
+    public boolean canExtract(int slot, ItemStack stack, Direction dir) {
+        // Allow extracting from output slots
+        if (slot >= OUTPUT_START) {
+            return true;
+        }
+        // Allow extracting empty buckets from fuel slot (remainder from lava bucket)
+        if (slot == FUEL_SLOT && stack.isOf(Items.BUCKET)) {
+            return true;
+        }
+        return false;
     }
 }

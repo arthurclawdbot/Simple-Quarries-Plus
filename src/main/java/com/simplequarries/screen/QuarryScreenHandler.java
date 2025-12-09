@@ -54,36 +54,40 @@ public class QuarryScreenHandler extends ScreenHandler {
         checkSize(inventory, QuarryBlockEntity.INVENTORY_SIZE);
         inventory.onOpen(playerInventory.player);
 
-        // Add output slots (4 rows x 9 columns = 36 slots, indices 2-37)
-        // Start at X=8 to align with player inventory below
-        int outputStartX = 8;
-        int outputStartY = 17;
+        // Layout: Furnace-style on left, output grid on right
+        // Left side: Pickaxe (top), Fuel (bottom) with flame between
+        // Right side: 4 rows x 6 cols output grid = 24 slots displayed
+        
+        // Add pickaxe slot (slot 0) - top left area
+        this.addSlot(new PickaxeSlot(blockEntity, QuarryBlockEntity.PICKAXE_SLOT, 8, 17));
+        
+        // Add fuel slot (slot 1) - below pickaxe
+        this.addSlot(new FuelSlot(blockEntity, QuarryBlockEntity.FUEL_SLOT, 8, 53));
+
+        // Add output slots (4 rows x 6 columns = 24 slots visible, indices 2-25)
+        // Positioned to the right of the control area (slot x/y is top-left of the 16x16 item area)
+        int outputStartX = 62;
+        int outputStartY = 8;
         for (int row = 0; row < 4; row++) {
-            for (int col = 0; col < 9; col++) {
-                int slotIndex = QuarryBlockEntity.OUTPUT_START + row * 9 + col;
+            for (int col = 0; col < 6; col++) {
+                int slotIndex = QuarryBlockEntity.OUTPUT_START + row * 6 + col;
                 int x = outputStartX + col * 18;
                 int y = outputStartY + row * 18;
                 this.addSlot(new OutputSlot(blockEntity, slotIndex, x, y));
             }
         }
 
-        // Add pickaxe slot (slot 0) - in 5th row, first position
-        int row5Y = outputStartY + 4 * 18; // 17 + 72 = 89
-        this.addSlot(new PickaxeSlot(blockEntity, QuarryBlockEntity.PICKAXE_SLOT, 8, row5Y));
-        
-        // Add fuel slot (slot 1) - in 5th row, second position
-        this.addSlot(new FuelSlot(blockEntity, QuarryBlockEntity.FUEL_SLOT, 26, row5Y));
-
         // Add player inventory (3 rows x 9 columns)
-        int playerInvY = 103;
+        // Standard furnace player inv Y = 84
+        int playerInvY = 84;
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
                 this.addSlot(new Slot(playerInventory, col + row * 9 + 9, 8 + col * 18, playerInvY + row * 18));
             }
         }
 
-        // Add player hotbar
-        int hotbarY = 161;
+        // Add player hotbar (standard furnace hotbar Y = 142)
+        int hotbarY = 142;
         for (int col = 0; col < 9; col++) {
             this.addSlot(new Slot(playerInventory, col, 8 + col * 18, hotbarY));
         }
@@ -102,6 +106,9 @@ public class QuarryScreenHandler extends ScreenHandler {
         throw new IllegalStateException("Quarry block entity not found at " + pos);
     }
 
+    // Number of quarry slots in this screen (pickaxe + fuel + 24 output)
+    private static final int QUARRY_SLOT_COUNT = 26;
+
     /**
      * Handle shift-clicking items between slots
      */
@@ -114,11 +121,10 @@ public class QuarryScreenHandler extends ScreenHandler {
             ItemStack original = slot.getStack();
             newStack = original.copy();
 
-            int quarrySlotCount = QuarryBlockEntity.INVENTORY_SIZE;
-            int playerSlotStart = quarrySlotCount;
+            int playerSlotStart = QUARRY_SLOT_COUNT;
             int playerSlotEnd = playerSlotStart + 36;
 
-            if (slotIndex < quarrySlotCount) {
+            if (slotIndex < QUARRY_SLOT_COUNT) {
                 // Moving from quarry to player inventory
                 if (!this.insertItem(original, playerSlotStart, playerSlotEnd, true)) {
                     return ItemStack.EMPTY;
@@ -126,13 +132,13 @@ public class QuarryScreenHandler extends ScreenHandler {
             } else {
                 // Moving from player inventory to quarry
                 if (blockEntity.isValidPickaxe(original)) {
-                    // Try to insert into pickaxe slot
-                    if (!this.insertItem(original, QuarryBlockEntity.PICKAXE_SLOT, QuarryBlockEntity.PICKAXE_SLOT + 1, false)) {
+                    // Try to insert into pickaxe slot (slot index 0 in screen)
+                    if (!this.insertItem(original, 0, 1, false)) {
                         return ItemStack.EMPTY;
                     }
                 } else if (blockEntity.getFuelValue(original) > 0) {
-                    // Try to insert into fuel slot
-                    if (!this.insertItem(original, QuarryBlockEntity.FUEL_SLOT, QuarryBlockEntity.FUEL_SLOT + 1, false)) {
+                    // Try to insert into fuel slot (slot index 1 in screen)
+                    if (!this.insertItem(original, 1, 2, false)) {
                         return ItemStack.EMPTY;
                     }
                 } else {

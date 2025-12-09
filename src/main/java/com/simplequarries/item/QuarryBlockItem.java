@@ -1,0 +1,60 @@
+package com.simplequarries.item;
+
+import com.simplequarries.QuarryUpgrades;
+import com.simplequarries.component.QuarryComponents;
+import net.minecraft.block.Block;
+import net.minecraft.item.BlockItem;
+import net.minecraft.item.Item;
+import net.minecraft.component.type.TooltipDisplayComponent;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.tooltip.TooltipType;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.text.Text;
+
+import java.util.function.Consumer;
+
+public class QuarryBlockItem extends BlockItem {
+    public QuarryBlockItem(Block block, Settings settings) {
+        super(block, settings);
+    }
+
+    public static int getUpgradeCount(ItemStack stack) {
+        int fromComponent = stack.getOrDefault(QuarryComponents.UPGRADE_COUNT, 0);
+        if (fromComponent > 0) {
+            return QuarryUpgrades.clampUpgradeCount(fromComponent);
+        }
+        // Fallback for stacks that only carry BlockEntityTag (e.g., drops)
+        var blockEntityData = stack.get(DataComponentTypes.BLOCK_ENTITY_DATA);
+        if (blockEntityData != null) {
+            NbtCompound nbt = blockEntityData.copyNbtWithoutId();
+            int fromTag = nbt.getInt("UpgradeCount").orElse(0);
+            if (fromTag > 0) {
+                return QuarryUpgrades.clampUpgradeCount(fromTag);
+            }
+        }
+        return 0;
+    }
+
+    public static void setUpgradeCount(ItemStack stack, int count) {
+        int clamped = QuarryUpgrades.clampUpgradeCount(count);
+        stack.set(QuarryComponents.UPGRADE_COUNT, clamped);
+    }
+
+    public static int getMiningArea(ItemStack stack) {
+        return QuarryUpgrades.areaForCount(getUpgradeCount(stack));
+    }
+
+    @Override
+    public void appendTooltip(ItemStack stack, Item.TooltipContext context, TooltipDisplayComponent display, Consumer<Text> textConsumer, TooltipType type) {
+        super.appendTooltip(stack, context, display, textConsumer, type);
+        int area = getMiningArea(stack);
+        boolean atMax = area >= QuarryUpgrades.MAX_AREA;
+        if (atMax) {
+            textConsumer.accept(Text.translatable("tooltip.simplequarries.quarry.area_max", area, area));
+        } else {
+            textConsumer.accept(Text.translatable("tooltip.simplequarries.quarry.area", area, area));
+        }
+    }
+}

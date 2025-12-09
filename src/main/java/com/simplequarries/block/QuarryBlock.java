@@ -2,6 +2,7 @@ package com.simplequarries.block;
 
 import com.simplequarries.SimpleQuarries;
 import com.simplequarries.block.entity.QuarryBlockEntity;
+import com.simplequarries.item.QuarryBlockItem;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockRenderType;
@@ -10,9 +11,11 @@ import net.minecraft.block.BlockWithEntity;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityTicker;
 import net.minecraft.block.entity.BlockEntityType;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.item.ItemPlacementContext;
+import net.minecraft.item.ItemStack;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.screen.NamedScreenHandlerFactory;
 import net.minecraft.server.world.ServerWorld;
@@ -99,6 +102,14 @@ public class QuarryBlock extends BlockWithEntity {
         }
 
         return ActionResult.CONSUME;
+    }
+
+    @Override
+    public void onPlaced(World world, BlockPos pos, BlockState state, LivingEntity placer, ItemStack itemStack) {
+        super.onPlaced(world, pos, state, placer, itemStack);
+        if (world.getBlockEntity(pos) instanceof QuarryBlockEntity quarry) {
+            quarry.setUpgradeCount(QuarryBlockItem.getUpgradeCount(itemStack));
+        }
     }
 
     @Override

@@ -1,6 +1,10 @@
 {
-  "parent": "minecraft:block/cube_all",
+  "parent": "simplequarries:block/orientable_with_bottom",
   "textures": {
-    "all": "simplequarries:block/quarry"
+    "particle": "simplequarries:block/quarry_side",
+    "front": "simplequarries:block/quarry_front",
+    "side": "simplequarries:block/quarry_side",
+    "top": "simplequarries:block/quarry_top",
+    "bottom": "simplequarries:block/quarry_bottom"
   }
 }

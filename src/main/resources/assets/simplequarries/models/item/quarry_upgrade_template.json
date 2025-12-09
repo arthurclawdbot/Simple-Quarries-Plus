@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "simplequarries:item/quarry_upgrade_template",
+    "particle": "simplequarries:item/quarry_upgrade_template"
+  }
+}

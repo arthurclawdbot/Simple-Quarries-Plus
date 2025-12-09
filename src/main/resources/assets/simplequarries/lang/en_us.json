@@ -1,5 +1,8 @@
 {
   "block.simplequarries.quarry": "Quarry",
   "item.simplequarries.quarry": "Quarry",
+  "item.simplequarries.quarry_upgrade_template": "Quarry Upgrade Template",
+  "tooltip.simplequarries.quarry.area": "Mining Area: %sx%s",
+  "tooltip.simplequarries.quarry.area_max": "Mining Area: %sx%s (Max)",
   "container.simplequarries.quarry": "Quarry"
 }

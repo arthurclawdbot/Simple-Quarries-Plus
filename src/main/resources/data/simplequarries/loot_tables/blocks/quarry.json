@@ -4,7 +4,19 @@
     {
       "rolls": 1,
       "entries": [
-        { "type": "minecraft:item", "name": "simplequarries:quarry" }
+        { 
+          "type": "minecraft:item", 
+          "name": "simplequarries:quarry",
+          "functions": [
+            {
+              "function": "minecraft:copy_nbt",
+              "source": "block_entity",
+              "ops": [
+                { "source": "UpgradeCount", "target": "BlockEntityTag.UpgradeCount", "op": "replace" }
+              ]
+            }
+          ] 
+        }
       ],
       "conditions": [
         { "condition": "minecraft:survives_explosion" }

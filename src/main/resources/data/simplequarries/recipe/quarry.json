@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "###",
+    "IDI",
+    "CCC"
+  ],
+  "key": {
+    "#": "minecraft:redstone",
+    "I": "minecraft:iron_block",
+    "D": "minecraft:diamond_pickaxe",
+    "C": "minecraft:cobblestone"
+  },
+  "result": {
+    "id": "simplequarries:quarry",
+    "count": 1
+  }
+}
