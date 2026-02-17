@@ -274,31 +274,30 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
     }
 
     /**
-     * Check if drops from a block should be kept based on filter settings.
-     * The quarry always mines every block — filters only control whether drops are stored or voided.
-     * - Whitelist: only keep drops from blocks matching the filter
-     * - Blacklist: void drops from blocks matching the filter
+     * Check if a specific drop item should be kept based on filter settings.
+     * Filters match against the actual DROP ITEMS, not the block being mined.
+     * This way putting cobblestone in the filter works even though the block is stone.
+     * - Whitelist: only keep drops that match the filter
+     * - Blacklist: void drops that match the filter
      */
-    private boolean shouldKeepDrops(BlockState targetState) {
+    private boolean shouldKeepDrop(ItemStack drop) {
         if (filterMode == FILTER_DISABLED) {
             return true;
         }
 
-        Item blockItem = targetState.getBlock().asItem();
         boolean matchesFilter = false;
-
         for (int i = FILTER_START; i < FILTER_START + FILTER_SLOTS; i++) {
             ItemStack filterStack = items.get(i);
-            if (!filterStack.isEmpty() && filterStack.getItem() == blockItem) {
+            if (!filterStack.isEmpty() && filterStack.getItem() == drop.getItem()) {
                 matchesFilter = true;
                 break;
             }
         }
 
         if (filterMode == FILTER_WHITELIST) {
-            return matchesFilter; // Only keep drops from matching blocks
+            return matchesFilter; // Only keep matching drops
         } else { // FILTER_BLACKLIST
-            return !matchesFilter; // Void drops from matching blocks
+            return !matchesFilter; // Void matching drops
         }
     }
 
@@ -351,14 +350,9 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
             return false;
         }
 
-        // Check if we should keep the drops (filter system)
-        boolean keepDrops = shouldKeepDrops(targetState);
-
         // Get the drops using the pickaxe (Fortune and Silk Touch are handled automatically
         // by getDroppedStacks since the pickaxe's enchantments affect the loot context)
-        List<ItemStack> drops = keepDrops
-                ? Block.getDroppedStacks(targetState, world, target, world.getBlockEntity(target), null, pickaxe)
-                : List.of();
+        List<ItemStack> drops = Block.getDroppedStacks(targetState, world, target, world.getBlockEntity(target), null, pickaxe);
         
         boolean removed = world.breakBlock(target, false);
 
@@ -366,8 +360,11 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
             return false;
         }
 
-        // Insert drops into output inventory (empty list if filtered out)
+        // Insert drops into output inventory, filtering per-item based on filter settings
         for (ItemStack drop : drops) {
+            if (!shouldKeepDrop(drop)) {
+                continue; // Void this drop
+            }
             ItemStack remainder = insertIntoOutputs(drop.copy());
             if (!remainder.isEmpty()) {
                 Block.dropStack(world, pos.up(), remainder);
