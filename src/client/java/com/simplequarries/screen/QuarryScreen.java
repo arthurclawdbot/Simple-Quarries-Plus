@@ -177,16 +177,16 @@ public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
         String fuelText;
         int fuelColor;
         if (fuel > 0) {
-            fuelText = fuel + " blk" + (fuel != 1 ? "s" : "");
+            fuelText = "⛽ " + fuel;
             fuelColor = 0x55FF55; // green
         } else if (handler.hasFuel()) {
-            fuelText = "Ready";
+            fuelText = "⛽ Ready";
             fuelColor = 0xFFFF55; // yellow
         } else {
-            fuelText = "No fuel";
+            fuelText = "⛽ Empty";
             fuelColor = 0xFF5555; // red
         }
-        ctx.drawText(textRenderer, Text.literal(fuelText), 8, 78, fuelColor, false);
+        ctx.drawText(textRenderer, Text.literal(fuelText), 8, 80, fuelColor, true);
     }
 
     // ── Drawing helpers ──
