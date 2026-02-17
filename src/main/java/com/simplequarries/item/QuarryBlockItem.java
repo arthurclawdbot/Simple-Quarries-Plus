@@ -42,6 +42,28 @@ public class QuarryBlockItem extends BlockItem {
         stack.set(QuarryComponents.UPGRADE_COUNT, clamped);
     }
 
+    public static int getSpeedUpgradeCount(ItemStack stack) {
+        int fromComponent = stack.getOrDefault(QuarryComponents.SPEED_UPGRADE_COUNT, 0);
+        if (fromComponent > 0) {
+            return QuarryUpgrades.clampSpeedCount(fromComponent);
+        }
+        // Fallback for stacks that only carry BlockEntityTag (e.g., drops)
+        var blockEntityData = stack.get(DataComponentTypes.BLOCK_ENTITY_DATA);
+        if (blockEntityData != null) {
+            NbtCompound nbt = blockEntityData.copyNbtWithoutId();
+            int fromTag = nbt.getInt("SpeedUpgradeCount").orElse(0);
+            if (fromTag > 0) {
+                return QuarryUpgrades.clampSpeedCount(fromTag);
+            }
+        }
+        return 0;
+    }
+
+    public static void setSpeedUpgradeCount(ItemStack stack, int count) {
+        int clamped = QuarryUpgrades.clampSpeedCount(count);
+        stack.set(QuarryComponents.SPEED_UPGRADE_COUNT, clamped);
+    }
+
     public static int getMiningArea(ItemStack stack) {
         return QuarryUpgrades.areaForCount(getUpgradeCount(stack));
     }
@@ -49,12 +71,20 @@ public class QuarryBlockItem extends BlockItem {
     @Override
     public void appendTooltip(ItemStack stack, Item.TooltipContext context, TooltipDisplayComponent display, Consumer<Text> textConsumer, TooltipType type) {
         super.appendTooltip(stack, context, display, textConsumer, type);
+        
+        // Area upgrades
         int area = getMiningArea(stack);
-        boolean atMax = area >= QuarryUpgrades.MAX_AREA;
-        if (atMax) {
+        boolean areaAtMax = area >= QuarryUpgrades.MAX_AREA;
+        if (areaAtMax) {
             textConsumer.accept(Text.translatable("tooltip.simplequarries.quarry.area_max", area, area));
         } else {
             textConsumer.accept(Text.translatable("tooltip.simplequarries.quarry.area", area, area));
+        }
+        
+        // Speed upgrades
+        int speed = getSpeedUpgradeCount(stack);
+        if (speed > 0) {
+            textConsumer.accept(Text.translatable("tooltip.simplequarries.quarry.speed", speed));
         }
     }
 }
