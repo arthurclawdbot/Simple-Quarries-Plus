@@ -135,9 +135,8 @@ public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
                 fuelStr = "Empty";
                 barColor = 0xFFAA4444; // red
             }
-            int barY = y + 78;
-            // Draw text right-aligned next to fuel slot area
-            ctx.drawText(textRenderer, Text.literal(fuelStr), x + 30, barY + 1, barColor, true);
+            // Draw below the fuel slot, left-aligned with it
+            ctx.drawText(textRenderer, Text.literal(fuelStr), x + 8, y + 78, barColor, true);
         }
 
         // ── Separator ──
