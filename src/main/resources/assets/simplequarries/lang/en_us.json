@@ -5,6 +5,7 @@
   "item.simplequarries.quarry_speed_upgrade_template": "Quarry Speed Upgrade Template",
   "tooltip.simplequarries.quarry.area": "Mining Area: %sx%s",
   "tooltip.simplequarries.quarry.area_max": "Mining Area: %sx%s (Max)",
-  "tooltip.simplequarries.quarry.speed": "Speed Upgrades: %s",
+  "tooltip.simplequarries.quarry.speed": "Speed Upgrades: %s (%s%% faster)",
+  "tooltip.simplequarries.speed_template": "Boosts quarry speed by 20%",
   "container.simplequarries.quarry": "Quarry"
 }

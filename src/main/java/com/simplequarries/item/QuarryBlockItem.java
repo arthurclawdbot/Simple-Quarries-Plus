@@ -84,7 +84,8 @@ public class QuarryBlockItem extends BlockItem {
         // Speed upgrades
         int speed = getSpeedUpgradeCount(stack);
         if (speed > 0) {
-            textConsumer.accept(Text.translatable("tooltip.simplequarries.quarry.speed", speed));
+            int percentBoost = (int) Math.round((1.0 - QuarryUpgrades.speedMultiplierForCount(speed)) * 100);
+            textConsumer.accept(Text.translatable("tooltip.simplequarries.quarry.speed", speed, percentBoost));
         }
     }
 }
