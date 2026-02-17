@@ -274,9 +274,12 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
     }
 
     /**
-     * Check if a block should be mined based on filter settings
+     * Check if drops from a block should be kept based on filter settings.
+     * The quarry always mines every block — filters only control whether drops are stored or voided.
+     * - Whitelist: only keep drops from blocks matching the filter
+     * - Blacklist: void drops from blocks matching the filter
      */
-    private boolean shouldMineBlock(BlockState targetState) {
+    private boolean shouldKeepDrops(BlockState targetState) {
         if (filterMode == FILTER_DISABLED) {
             return true;
         }
@@ -293,9 +296,9 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
         }
 
         if (filterMode == FILTER_WHITELIST) {
-            return matchesFilter; // Only mine matching blocks
+            return matchesFilter; // Only keep drops from matching blocks
         } else { // FILTER_BLACKLIST
-            return !matchesFilter; // Skip matching blocks
+            return !matchesFilter; // Void drops from matching blocks
         }
     }
 
@@ -348,9 +351,14 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
             return false;
         }
 
+        // Check if we should keep the drops (filter system)
+        boolean keepDrops = shouldKeepDrops(targetState);
+
         // Get the drops using the pickaxe (Fortune and Silk Touch are handled automatically
         // by getDroppedStacks since the pickaxe's enchantments affect the loot context)
-        List<ItemStack> drops = Block.getDroppedStacks(targetState, world, target, world.getBlockEntity(target), null, pickaxe);
+        List<ItemStack> drops = keepDrops
+                ? Block.getDroppedStacks(targetState, world, target, world.getBlockEntity(target), null, pickaxe)
+                : List.of();
         
         boolean removed = world.breakBlock(target, false);
 
@@ -358,7 +366,7 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
             return false;
         }
 
-        // Insert drops into output inventory
+        // Insert drops into output inventory (empty list if filtered out)
         for (ItemStack drop : drops) {
             ItemStack remainder = insertIntoOutputs(drop.copy());
             if (!remainder.isEmpty()) {
@@ -417,11 +425,6 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
             }
 
             if (state.getBlock() == SimpleQuarries.QUARRY_BLOCK) {
-                continue;
-            }
-
-            // Apply filter check
-            if (!shouldMineBlock(state)) {
                 continue;
             }
 
