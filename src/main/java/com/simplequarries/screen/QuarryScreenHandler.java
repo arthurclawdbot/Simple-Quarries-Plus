@@ -73,9 +73,9 @@ public class QuarryScreenHandler extends ScreenHandler {
             }
         }
 
-        // Slots 26-34: Filter grid (3x3) - positioned below output grid
+        // Slots 26-34: Filter grid (3x3) - positioned in filter section
         int filterStartX = 80;
-        int filterStartY = 82;
+        int filterStartY = 94;
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 3; col++) {
                 int slotIndex = QuarryBlockEntity.FILTER_START + row * 3 + col;
