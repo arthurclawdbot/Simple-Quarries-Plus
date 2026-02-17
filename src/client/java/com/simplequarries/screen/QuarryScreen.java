@@ -55,7 +55,7 @@ public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
                     if (client != null && client.interactionManager != null)
                         client.interactionManager.clickButton(handler.syncId, 0);
                 }
-        ).dimensions(x + 8, y + 100, 88, 20).build();
+        ).dimensions(x + 8, y + 104, 88, 20).build();
         this.addDrawableChild(filterButton);
     }
 
@@ -119,8 +119,35 @@ public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
             ctx.drawTexture(RenderPipelines.GUI_TEXTURED, FURNACE_TEXTURE,
                     x + 35, y + 38, 176f, 14f, arrow + 1, 16, 256, 256);
 
+        // ── Fuel counter ──
+        {
+            int fuel = handler.getBurnTime();
+            String fuelStr;
+            int barColor;
+            if (fuel > 0) {
+                fuelStr = "Fuel: " + fuel + " blocks";
+                barColor = 0xFF44AA44; // green
+            } else if (handler.hasFuel()) {
+                fuelStr = "Fuel: Ready";
+                barColor = 0xFFAAAA22; // yellow
+            } else {
+                fuelStr = "Fuel: Empty";
+                barColor = 0xFFAA4444; // red
+            }
+            int barX = x + 8;
+            int barY = y + 78;
+            int barW = 50;
+            int barH = 10;
+            // Background
+            ctx.fill(barX, barY, barX + barW, barY + barH, 0xFF333333);
+            // Colored fill
+            ctx.fill(barX + 1, barY + 1, barX + barW - 1, barY + barH - 1, barColor);
+            // Text
+            ctx.drawText(textRenderer, Text.literal(fuelStr), barX + barW + 3, barY + 1, 0xFFFFFF, true);
+        }
+
         // ── Separator ──
-        drawSep(ctx, x + 7, y + 86, 162);
+        drawSep(ctx, x + 7, y + 90, 162);
 
         // ══════════ MIDDLE: Filter section ══════════
 
@@ -172,21 +199,7 @@ public class QuarryScreen extends HandledScreen<QuarryScreenHandler> {
         ctx.drawText(textRenderer, title, titleX, titleY, TXT, false);
         ctx.drawText(textRenderer, playerInventoryTitle, playerInventoryTitleX, playerInventoryTitleY, TXT, false);
 
-        // Fuel remaining display below the fuel slot
-        int fuel = handler.getBurnTime();
-        String fuelText;
-        int fuelColor;
-        if (fuel > 0) {
-            fuelText = "⛽ " + fuel;
-            fuelColor = 0x55FF55; // green
-        } else if (handler.hasFuel()) {
-            fuelText = "⛽ Ready";
-            fuelColor = 0xFFFF55; // yellow
-        } else {
-            fuelText = "⛽ Empty";
-            fuelColor = 0xFF5555; // red
-        }
-        ctx.drawText(textRenderer, Text.literal(fuelText), 8, 80, fuelColor, true);
+        // Fuel display is drawn in drawBackground
     }
 
     // ── Drawing helpers ──
