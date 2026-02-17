@@ -56,14 +56,14 @@ public class QuarryScreenHandler extends ScreenHandler {
         inventory.onOpen(playerInventory.player);
 
         // Slot 0: Pickaxe
-        this.addSlot(new PickaxeSlot(blockEntity, QuarryBlockEntity.PICKAXE_SLOT, 8, 17));
+        this.addSlot(new PickaxeSlot(blockEntity, QuarryBlockEntity.PICKAXE_SLOT, 15, 20));
         
         // Slot 1: Fuel
-        this.addSlot(new FuelSlot(blockEntity, QuarryBlockEntity.FUEL_SLOT, 8, 53));
+        this.addSlot(new FuelSlot(blockEntity, QuarryBlockEntity.FUEL_SLOT, 15, 58));
 
         // Slots 2-25: Output grid (4 rows x 6 cols)
-        int outputStartX = 62;
-        int outputStartY = 8;
+        int outputStartX = 68;
+        int outputStartY = 10;
         for (int row = 0; row < 4; row++) {
             for (int col = 0; col < 6; col++) {
                 int slotIndex = QuarryBlockEntity.OUTPUT_START + row * 6 + col;
@@ -74,8 +74,8 @@ public class QuarryScreenHandler extends ScreenHandler {
         }
 
         // Slots 26-34: Filter grid (3x3) - positioned in filter section
-        int filterStartX = 80;
-        int filterStartY = 94;
+        int filterStartX = 100;
+        int filterStartY = 96;
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 3; col++) {
                 int slotIndex = QuarryBlockEntity.FILTER_START + row * 3 + col;
@@ -86,7 +86,7 @@ public class QuarryScreenHandler extends ScreenHandler {
         }
 
         // Player inventory (3 rows x 9 cols)
-        int playerInvY = 140;
+        int playerInvY = 158;
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
                 this.addSlot(new Slot(playerInventory, col + row * 9 + 9, 8 + col * 18, playerInvY + row * 18));
@@ -94,7 +94,7 @@ public class QuarryScreenHandler extends ScreenHandler {
         }
 
         // Player hotbar
-        int hotbarY = 198;
+        int hotbarY = 220;
         for (int col = 0; col < 9; col++) {
             this.addSlot(new Slot(playerInventory, col, 8 + col * 18, hotbarY));
         }
@@ -173,10 +173,6 @@ public class QuarryScreenHandler extends ScreenHandler {
         if (id == 0) {
             // Cycle filter mode: disabled -> whitelist -> blacklist -> disabled
             blockEntity.cycleFilterMode();
-            return true;
-        } else if (id == 1) {
-            // Toggle chunk loader
-            blockEntity.toggleChunkLoader();
             return true;
         }
         return false;

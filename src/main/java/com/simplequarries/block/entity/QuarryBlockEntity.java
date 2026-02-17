@@ -122,7 +122,7 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
                 case 2 -> miningProgress;
                 case 3 -> ticksPerBlock;
                 case 4 -> filterMode;
-                case 5 -> chunkLoaderEnabled ? 1 : 0;
+                case 5 -> 1; // chunk loading always enabled
                 default -> 0;
             };
         }
@@ -135,7 +135,7 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
                 case 2 -> miningProgress = value;
                 case 3 -> ticksPerBlock = value;
                 case 4 -> filterMode = MathHelper.clamp(value, 0, 2);
-                case 5 -> chunkLoaderEnabled = value != 0;
+                case 5 -> {} // chunk loading always enabled, ignore
             }
         }
 
@@ -155,7 +155,6 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
     private int upgradeCount = 0;
     private int speedUpgradeCount = 0;
     private int filterMode = FILTER_DISABLED;
-    private boolean chunkLoaderEnabled = false;
     private boolean wasChunkForced = false;  // Track if we forced the chunk
 
     public QuarryBlockEntity(BlockPos pos, BlockState state) {
@@ -238,7 +237,7 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
      * Update chunk loading state based on whether the quarry is actively mining
      */
     private void updateChunkLoading(ServerWorld world, boolean shouldBeActive) {
-        boolean shouldForce = chunkLoaderEnabled && shouldBeActive;
+        boolean shouldForce = shouldBeActive; // always chunk load when active
         if (shouldForce != wasChunkForced) {
             ChunkPos chunkPos = new ChunkPos(pos);
             world.setChunkForced(chunkPos.x, chunkPos.z, shouldForce);
@@ -257,18 +256,7 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
         }
     }
 
-    public boolean isChunkLoaderEnabled() {
-        return chunkLoaderEnabled;
-    }
-
-    public void setChunkLoaderEnabled(boolean enabled) {
-        this.chunkLoaderEnabled = enabled;
-        markDirty();
-    }
-
-    public void toggleChunkLoader() {
-        setChunkLoaderEnabled(!chunkLoaderEnabled);
-    }
+    // Chunk loading is always enabled when the quarry is actively mining
 
     // ==================== Filter System ====================
 
@@ -581,7 +569,7 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
         data.putInt("UpgradeCount", upgradeCount);
         data.putInt("SpeedUpgradeCount", speedUpgradeCount);
         data.putInt("FilterMode", filterMode);
-        data.putBoolean("ChunkLoaderEnabled", chunkLoaderEnabled);
+        // chunkLoaderEnabled removed — always on
     }
 
     @Override
@@ -606,7 +594,7 @@ public class QuarryBlockEntity extends BlockEntity implements ExtendedScreenHand
         upgradeCount = QuarryUpgrades.clampUpgradeCount(data.getInt("UpgradeCount", 0));
         speedUpgradeCount = QuarryUpgrades.clampSpeedCount(data.getInt("SpeedUpgradeCount", 0));
         filterMode = MathHelper.clamp(data.getInt("FilterMode", 0), 0, 2);
-        chunkLoaderEnabled = data.getBoolean("ChunkLoaderEnabled", false);
+        // chunkLoaderEnabled removed — always on
         clampAreaIndex();
     }
 
